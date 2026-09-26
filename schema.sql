@@ -14,6 +14,7 @@ create table if not exists public.exercises (
   photo_path   text,          -- путь к фото в Storage
   video_path   text,          -- путь к загруженному видео в Storage
   video_url    text,          -- или ссылка на видео (YouTube и т.п.)
+  rest_seconds int,           -- своё время отдыха, сек
   archived     boolean not null default false,  -- скрыто из библиотеки, история сохраняется
   created_at   timestamptz not null default now()
 );
@@ -26,6 +27,8 @@ create table if not exists public.workouts (
   title      text,
   notes      text,
   completed  boolean not null default false,
+  started_at  timestamptz,
+  finished_at timestamptz,
   created_at timestamptz not null default now()
 );
 create index if not exists workouts_user_date_idx on public.workouts (user_id, date);
