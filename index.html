@@ -274,14 +274,42 @@ textarea.input { resize: vertical; }
    НАСТРОЙКИ — вставьте данные своего проекта Supabase
    (Project Settings → API: Project URL и anon / publishable key)
    ===================================================================== */
-const SUPABASE_URL = 'aitlnderekzxyhedpard.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_UEiEYVXUHFRY-F7neAP8PA_VDtMx0Bb';
+const SUPABASE_URL = 'https://ВАШ-ПРОЕКТ.supabase.co';
+const SUPABASE_KEY = 'ВАШ-ANON-KEY';
 const BUCKET = 'media';
 const MAX_VIDEO_MB = 50;
 
 /* ===================================================================== */
+// Ошибки показываются на экране, а не только в консоли
+function showFatal(msg) {
+  const app = document.getElementById('app');
+  if (app && !app.children.length) {
+    app.innerHTML = `<div class="auth"><div class="card"><h1>Ошибка</h1>
+      <p style="white-space:pre-wrap;word-break:break-word"></p>
+      <p class="muted small">Пришлите этот текст — по нему видно, что поправить.</p></div></div>`;
+    app.querySelector('p').textContent = msg;
+  } else if (typeof toast === 'function') {
+    toast(msg, true);
+  } else {
+    alert(msg);
+  }
+}
+window.addEventListener('error', e => showFatal(e.message || 'Неизвестная ошибка'));
+window.addEventListener('unhandledrejection', e => showFatal(e.reason?.message || String(e.reason)));
+
 const configured = !SUPABASE_URL.includes('ВАШ') && !SUPABASE_KEY.includes('ВАШ');
-const sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+let sb = null;
+if (configured) {
+  if (!window.supabase) {
+    showFatal('Не загрузилась библиотека Supabase с cdn.jsdelivr.net. Проверьте интернет, VPN или блокировщик рекламы и обновите страницу.');
+  } else {
+    try {
+      sb = window.supabase.createClient(SUPABASE_URL.trim(), SUPABASE_KEY.trim());
+    } catch (e) {
+      showFatal(`Не удалось подключиться к Supabase: ${e.message}\n\nSUPABASE_URL должен выглядеть так: https://xxxxxxxx.supabase.co — без пробелов и лишнего текста.`);
+    }
+  }
+}
 
 // ---------- helpers ----------
 const $ = (s, r = document) => r.querySelector(s);
@@ -378,6 +406,7 @@ function openModal(html) {
 // ---------- boot / auth ----------
 async function boot() {
   if (!configured) return renderNotConfigured();
+  if (!sb) return;
   const { data: { session } } = await sb.auth.getSession();
   state.user = session?.user ?? null;
   sb.auth.onAuthStateChange((_event, s) => {
@@ -1247,6 +1276,7 @@ async function loadProgress() {
   const muted = css.getPropertyValue('--muted').trim();
   const line = css.getPropertyValue('--line').trim();
   const pts = sessions.filter(s => s[state.metric] != null);
+  if (typeof Chart === 'undefined') { $('.chart-box').innerHTML = '<p class="muted small">График не загрузился (cdn.jsdelivr.net недоступен).</p>'; return; }
   state.chart = new Chart($('#pr-chart'), {
     type: 'line',
     data: {
